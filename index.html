@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beacon BeatVibes — Smart Free Music Engine</title>
+    <title>Beacon BeatVibes — Ultimate Music Engine</title>
     
-    <!-- FAVICON LOGO BEACON BEATVIBES -->
     <link rel="icon" type="image/x-icon" href="Image/favicon.ico">
-    <!-- Optional: Jika gambar logomu berformat JPG/PNG, pakai baris di bawah ini -->
     <link rel="icon" type="image/jpeg" href="Image/Beacon BeatVibes Logo.jpg">
 
     <link rel="stylesheet" href="style.css">
@@ -17,7 +15,6 @@
 
     <div class="app-container">
         
-        <!-- Header Smart Navigation -->
         <header class="smart-header">
             <div class="brand">
                 <div class="logo-wrapper">
@@ -29,19 +26,17 @@
 
             <div class="search-capsule">
                 <span class="search-icon">⚡</span>
-                <input type="text" id="searchInput" placeholder="Cari musik Indo atau Internasional...">
-                <button onclick="searchSpotify()">Find Vibe</button>
+                <input type="text" id="searchInput" placeholder="Cari musik Indo atau Internasional..." onkeypress="if(event.key==='Enter') searchMusic()">
+                <button onclick="searchMusic()">Find Vibe</button>
             </div>
 
             <div class="header-actions">
-                <button id="loginBtn" class="auth-btn" onclick="loginSpotify()">Connect Spotify API</button>
+                <button class="auth-btn active-engine" onclick="initYouTubeMusicCatalog()">Reload Catalog 🔄</button>
             </div>
         </header>
 
-        <!-- Bento Grid Dashboard Layout -->
         <main class="bento-grid">
             
-            <!-- Hero Card: Atmosphere Mixer -->
             <section class="bento-card hero-mixer">
                 <div class="card-tag">FITUR PEMBEDA UNIK</div>
                 <h2>Atmosphere Sound Layering</h2>
@@ -72,18 +67,16 @@
                 </div>
             </section>
 
-            <!-- Status & Sleep Timer Card -->
             <section class="bento-card status-card">
                 <div class="card-tag">ENGINE STATUS</div>
                 <div class="status-indicator">
                     <span class="dot" id="statusDot"></span>
-                    <span id="statusText">Disconnected</span>
+                    <span id="statusText">YouTube API Engine Ready</span>
                 </div>
-                <p class="status-desc">Beacon BeatVibes Spotify API Stream Pipeline</p>
+                <p class="status-desc">Beacon BeatVibes High Quality Full Stream Pipeline</p>
 
                 <hr class="card-divider">
 
-                <!-- SLEEP TIMER MODULE -->
                 <div class="timer-section">
                     <div class="card-tag">⏱️ SLEEP TIMER</div>
                     <div class="timer-btns">
@@ -96,7 +89,6 @@
                 </div>
             </section>
 
-            <!-- QUEUE FEED -->
             <section class="bento-card side-feed" id="queueSection">
                 <div class="feed-header">
                     <h3>📑 Antrean Lagu (Queue)</h3>
@@ -107,7 +99,6 @@
                 </div>
             </section>
 
-            <!-- HISTORY FEED -->
             <section class="bento-card side-feed" id="historySection">
                 <div class="feed-header">
                     <h3>📜 Riwayat Terakhir</h3>
@@ -118,7 +109,6 @@
                 </div>
             </section>
 
-            <!-- FAVORITES / BOOKMARK FEED -->
             <section class="bento-card favorites-feed" id="favSection" style="display: none;">
                 <div class="feed-header">
                     <h3>❤️ Lagu Favorit Saya</h3>
@@ -127,22 +117,25 @@
                 <div class="smart-song-list" id="favSongList"></div>
             </section>
 
-            <!-- Song Feed Grid -->
             <section class="bento-card song-feed">
                 <div class="feed-header">
-                    <h3 id="sectionTitle">🔥 Trending BeatVibes</h3>
-                    <span class="badge-free">100% Free Stream</span>
+                    <div>
+                        <h3 id="sectionTitle">🎵 YouTube Music Home Feed (Global & Indo)</h3>
+                        <p class="section-subtext">Katalog lengkap lagu Barat, Indonesia Hits, Rock, Pop, dan Nostalgia</p>
+                    </div>
+                    <span class="badge-free">100% Full Stream Engine</span>
                 </div>
                 
-                <div class="smart-song-list" id="songList">
-                    <!-- Song Cards Rendered via JS -->
+                <div class="yt-music-catalog" id="ytMusicCatalog">
+                    <div class="loading-catalog">
+                        <p>⚡ Menyusun katalog YouTube Music lengkap untukmu...</p>
+                    </div>
                 </div>
             </section>
 
         </main>
     </div>
 
-    <!-- Mini Lyrics Modal -->
     <div class="lyrics-modal" id="lyricsModal">
         <div class="lyrics-content">
             <div class="lyrics-header">
@@ -155,7 +148,6 @@
         </div>
     </div>
 
-    <!-- Smart Floating Capsule Player -->
     <div class="smart-floating-player" id="floatingPlayer">
         <div class="player-artwork">
             <img id="playerCover" src="https://via.placeholder.com/60/1a1a24/ffffff?text=VIBE" alt="Cover">
@@ -164,7 +156,6 @@
         <div class="player-meta">
             <div class="track-title" id="playerTitle">Pilih Track Musik</div>
             <div class="track-artist" id="playerArtist">Beacon BeatVibes Engine</div>
-            <!-- Visualizer Bar Canvas -->
             <canvas id="visualizerCanvas" width="180" height="15"></canvas>
         </div>
 
@@ -180,62 +171,60 @@
         </div>
     </div>
 
-    <!-- Audio Elements -->
-    <audio id="mainAudio" crossorigin="anonymous"></audio>
+    <!-- WADAH PLAYER YOUTUBE -->
+    <div id="ytPlayer" style="display: none;"></div>
+
     <audio id="rainAudio" loop src="https://assets.mixkit.co/active_storage/sfx/2515/2515-preview.mp3"></audio>
     <audio id="cafeAudio" loop src="https://assets.mixkit.co/active_storage/sfx/3006/3006-preview.mp3"></audio>
     <audio id="fireAudio" loop src="https://assets.mixkit.co/active_storage/sfx/2678/2678-preview.mp3"></audio>
 
-    <!-- Footer Section -->
-        <footer class="smart-footer">
-            <div class="footer-container">
-                <div class="footer-brand">
-                    <div class="brand">
-                        <div class="logo-wrapper">
-                            <img src="Image/Beacon BeatVibes Logo.jpg" alt="Beacon BeatVibes Logo" class="brand-logo">
-                            <div class="beacon-light-dot"></div>
-                        </div>
-                        <div class="brand-text">BEACON <span>BEATVIBES</span></div>
+    <footer class="smart-footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <div class="brand">
+                    <div class="logo-wrapper">
+                        <img src="Image/Beacon BeatVibes Logo.jpg" alt="Beacon BeatVibes Logo" class="brand-logo">
+                        <div class="beacon-light-dot"></div>
                     </div>
-                    <p class="footer-desc">
-                        Beacon BeatVibes adalah platform pemutar musik digital interaktif berbasis web yang dirancang dengan antarmuka futuristik bertema dark-mode neon dan tata letak Bento Grid. Web ini hadir sebagai wadah streaming musik gratis yang mengintegrasikan pipeline API Spotify untuk menyajikan katalog lagu hits lokal maupun internasional secara cepat dan responsif. Selain pemutar musik standar, Beacon BeatVibes menawarkan pengalaman mendengarkan yang unik melalui fitur Atmosphere Sound Layering, di mana pengguna bisa menambahkan efek suara suasana seperti hujan, kafe, atau api unggun secara live untuk menemani aktivitas belajar maupun bersantai.
-                    </p>
+                    <div class="brand-text">BEACON <span>BEATVIBES</span></div>
                 </div>
-
-                <div class="footer-socials">
-    <h4>Hubungi & Ikuti Kami</h4>
-    <div class="social-links">
-        <!-- Instagram -->
-        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="social-icon instagram" title="Instagram">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-            </svg>
-        </a>
-
-        <!-- TikTok -->
-        <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" class="social-icon tiktok" title="TikTok">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-5.2-1.74 2.89 2.89 0 0 1 2.31-2.82V7.65a6.34 6.34 0 0 0-3.55 1.01 6.34 6.34 0 1 0 10.87 4.51V9.16a8.16 8.16 0 0 0 4.79 1.53V7.24a4.85 4.85 0 0 1-2-.55z"/>
-            </svg>
-        </a>
-
-        <!-- YouTube -->
-        <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" class="social-icon youtube" title="YouTube">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
-                <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
-            </svg>
-        </a>
-    </div>
-</div>
-
-            <div class="footer-bottom">
-                <p>&copy; 2026 <strong>Endless For Beacon Corp</strong>. All Rights Reserved.</p>
+                <p class="footer-desc">
+                    Beacon BeatVibes adalah pemutar musik web interaktif berfitur atmosphere layering, visualizer audio, lirik, dan antrean lagu. Dilengkapi sleep timer serta kontrol background playback untuk pengalaman streaming gratis yang fleksibel dan futuristik.
+                </p>
             </div>
-        </footer>
 
+            <div class="footer-socials">
+                <h4>Hubungi & Ikuti Kami</h4>
+                <div class="social-links">
+                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" class="social-icon instagram" title="Instagram">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg>
+                    </a>
+                    <a href="https://tiktok.com" target="_blank" rel="noopener noreferrer" class="social-icon tiktok" title="TikTok">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 1 1-5.2-1.74 2.89 2.89 0 0 1 2.31-2.82V7.65a6.34 6.34 0 0 0-3.55 1.01 6.34 6.34 0 1 0 10.87 4.51V9.16a8.16 8.16 0 0 0 4.79 1.53V7.24a4.85 4.85 0 0 1-2-.55z"/>
+                        </svg>
+                    </a>
+                    <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" class="social-icon youtube" title="YouTube">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path>
+                            <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bottom">
+            <p>&copy; 2026 <strong>Endless For Beacon Corp</strong>. All Rights Reserved.</p>
+        </div>
+    </footer>
+
+    <!-- YouTube IFrame Player API Script (Wajib agar player aktif) -->
+    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="script.js"></script>
 </body>
 </html>

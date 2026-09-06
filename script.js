@@ -1,96 +1,254 @@
-const CLIENT_ID = '70d85ec052784d0884d5887c1b9e9377';
-const REDIRECT_URI = window.location.origin + window.location.pathname;
-const SCOPES = ['user-read-private'];
+// ==========================================
+// BEACON BEATVIBES - YOUTUBE MUSIC ENGINE
+// ==========================================
 
-let accessToken = null;
-let currentAudio = document.getElementById('mainAudio');
+const YOUTUBE_API_KEY = "AIzaSyC6wP1LBnMYVa975zKwGObtVtMetoY7xb4";
+
+let player;
 let isPlaying = false;
+let currentTrackData = null;
 
-// State Data
+// State Data Storage
 let favoriteTracks = JSON.parse(localStorage.getItem('beacon_fav_tracks')) || [];
 let historyTracks = JSON.parse(localStorage.getItem('beacon_history_tracks')) || [];
 let queueTracks = [];
-let currentTrackData = null;
 
-// Timer
+// Sleep Timer State
 let sleepTimerTimeout = null;
 let sleepTimerInterval = null;
 let remainingSeconds = 0;
 
-// Audio Visualizer Context
-let audioCtx = null;
-let analyser = null;
-let sourceNode = null;
-let visualizerInitialized = false;
+// Visualizer Canvas State
+let animFrameId = null;
 
-document.addEventListener('DOMContentLoaded', () => {
-    checkTokenFromUrl();
-    renderFavorites();
-    renderHistory();
-    renderQueue();
-});
+// KATALOG KATEGORI LENGKAP (BARAT & INDONESIA)
+const CATALOG_SECTIONS = [
+    { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Top Billboard Hits Official Audio' },
+    { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia Hits Terpopuler' },
+    { id: 'west_rock', title: '🎸 Western Rock & Alternative', query: 'Best Classic Rock Alternative Song' },
+    { id: 'indo_rock', title: '⚡ Indo Rock & Band Hits', query: 'Lagu Band Pop Rock Indonesia Hits' },
+    { id: 'rnb_pop', title: '🎧 Global R&B Pop Vibing', query: 'Top R&B Pop Song Audio' },
+    { id: 'chill_indie', title: '☕ Indie & Acoustic Chill Indo', query: 'Lagu Indie Akustik Indonesia Hits' },
+    { id: 'throwback_west', title: '📻 2000s Western Throwback', query: '2000s Pop Rock Hits Western Audio' },
+    { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Indonesia Pop Nostalgia 2000an' }
+];
 
-// ----------------------------------------------------
-// 1. VISUALIZER AUDIO ENGINE
-// ----------------------------------------------------
-function initVisualizer() {
-    if (visualizerInitialized) return;
-    try {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioCtx.createAnalyser();
-        sourceNode = audioCtx.createMediaElementSource(currentAudio);
-
-        sourceNode.connect(analyser);
-        analyser.connect(audioCtx.destination);
-        analyser.fftSize = 64;
-
-        visualizerInitialized = true;
-        drawVisualizer();
-    } catch (e) {
-        console.log("Audio visualizer ready:", e);
-    }
-}
-
-function drawVisualizer() {
-    const canvas = document.getElementById('visualizerCanvas');
-    const ctx = canvas.getContext('2d');
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-
-    function renderFrame() {
-        requestAnimationFrame(renderFrame);
-        analyser.getByteFrequencyData(dataArray);
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const barWidth = (canvas.width / bufferLength) * 1.5;
-        let barHeight;
-        let x = 0;
-
-        for (let i = 0; i < bufferLength; i++) {
-            barHeight = dataArray[i] / 8;
-
-            ctx.fillStyle = '#00f3ff';
-            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-
-            x += barWidth + 2;
+// 1. Inisialisasi YouTube Player dengan Origin & Handling Lengkap
+function onYouTubeIframeAPIReady() {
+    player = new YT.Player('ytPlayer', {
+        height: '0', 
+        width: '0',
+        playerVars: { 
+            'autoplay': 1, 
+            'controls': 0, 
+            'disablekb': 1,
+            'origin': window.location.origin 
+        },
+        events: { 
+            'onReady': () => {
+                console.log("YouTube Engine Ready!");
+                initYouTubeMusicCatalog(); // Otomatis muat katalog saat player siap
+                renderFavorites();
+                renderHistory();
+                renderQueue();
+            },
+            'onStateChange': onPlayerStateChange,
+            'onError': onPlayerError 
         }
-    }
-    renderFrame();
+    });
 }
 
-// ----------------------------------------------------
-// 2. BACKGROUND PLAYBACK & LOCKSCREEN MEDIA CONTROL
-// ----------------------------------------------------
+// 2. Pantau Perubahan Status Player (Play, Pause, Ended)
+function onPlayerStateChange(event) {
+    const playBtn = document.getElementById('playBtn');
+    
+    if (event.data === YT.PlayerState.PLAYING) {
+        isPlaying = true;
+        if(playBtn) playBtn.innerText = "⏸";
+        startFakeVisualizer();
+    } else if (event.data === YT.PlayerState.PAUSED) {
+        isPlaying = false;
+        if(playBtn) playBtn.innerText = "▶";
+        stopFakeVisualizer();
+    } else if (event.data === YT.PlayerState.ENDED) {
+        isPlaying = false;
+        if(playBtn) playBtn.innerText = "▶";
+        stopFakeVisualizer();
+        playNextInQueue(); // Otomatis putar antrean selanjutnya jika lagu habis
+    }
+}
+
+// Menangani Error (Misal: Video dibatasi/embed dilarang)
+function onPlayerError(event) {
+    console.warn("YouTube Player Error Code:", event.data);
+    if (event.data === 101 || event.data === 150 || event.data === 100) {
+        alert("Lagu ini dibatasi oleh hak cipta YouTube untuk diputar di luar aplikasi. Memutar lagu berikutnya...");
+        playNextInQueue();
+    }
+}
+
+// 3. Fungsi Utama Pemutaran Lagu yang Diperbaiki
+function playTrack(track) {
+    if (!player || typeof player.loadVideoById !== 'function') {
+        alert("Player YouTube sedang disiapkan, silakan tunggu 2 detik lalu klik lagi.");
+        return;
+    }
+
+    currentTrackData = track;
+
+    // Update UI Metadata
+    document.getElementById('playerTitle').innerText = track.title;
+    document.getElementById('playerArtist').innerText = track.artist;
+    document.getElementById('playerCover').src = track.coverUrl;
+
+    // Muat dan putar video via YouTube IFrame API
+    player.loadVideoById({
+        videoId: track.id,
+        suggestedQuality: 'small'
+    });
+
+    player.playVideo();
+
+    addToHistory(track);
+    updateMediaSession(track.title, track.artist, track.coverUrl);
+}
+
+// 4. Fetch Katalog dari YouTube Data API v3
+async function initYouTubeMusicCatalog() {
+    const catalogContainer = document.getElementById('ytMusicCatalog');
+    if (!catalogContainer) return;
+    catalogContainer.innerHTML = '';
+
+    for (const section of CATALOG_SECTIONS) {
+        const shelfEl = document.createElement('div');
+        shelfEl.className = 'catalog-shelf';
+        shelfEl.innerHTML = `
+            <div class="shelf-title"><span>${section.title}</span></div>
+            <div class="shelf-carousel" id="carousel-${section.id}">
+                <p class="empty-state">Memuat lagu dari YouTube Music...</p>
+            </div>
+        `;
+        catalogContainer.appendChild(shelfEl);
+    }
+
+    for (const section of CATALOG_SECTIONS) {
+        await fetchYouTubeCatalog(section.query, `carousel-${section.id}`);
+        await new Promise(r => setTimeout(r, 100));
+    }
+}
+
+async function fetchYouTubeCatalog(query, carouselId) {
+    const carouselEl = document.getElementById(carouselId);
+    if (!carouselEl) return;
+
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.items && data.items.length > 0) {
+            renderCardsToCarousel(data.items.map(item => ({
+                id: item.id.videoId,
+                title: item.snippet.title,
+                artist: item.snippet.channelTitle,
+                coverUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url
+            })), carouselEl);
+        } else {
+            carouselEl.innerHTML = '<p class="empty-state">Tidak ada lagu ditemukan.</p>';
+        }
+    } catch (err) {
+        carouselEl.innerHTML = '<p class="empty-state">Gagal memuat katalog jaringan.</p>';
+    }
+}
+
+function renderCardsToCarousel(songs, carouselEl) {
+    carouselEl.innerHTML = '';
+
+    songs.forEach(trackData => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = trackData.title;
+        trackData.title = tempDiv.textContent || tempDiv.innerText || "";
+
+        const isLiked = favoriteTracks.some(t => t.id === trackData.id);
+
+        const card = document.createElement('div');
+        card.className = 'yt-music-card';
+        card.innerHTML = `
+            <div class="card-thumb-wrapper">
+                <img src="${trackData.coverUrl}" alt="cover" onerror="this.src='https://via.placeholder.com/120/1a1a24/ffffff?text=BEACON'">
+                <div class="play-hover-btn">▶</div>
+            </div>
+            <div class="yt-card-meta">
+                <div class="yt-card-title">${trackData.title}</div>
+                <div class="yt-card-artist">${trackData.artist}</div>
+            </div>
+            <div class="card-quick-actions">
+                <button class="action-btn" title="Tambah ke Antrean" onclick="event.stopPropagation(); addToQueue(${JSON.stringify(trackData).replace(/"/g, '&quot;')})">➕</button>
+                <button class="action-btn ${isLiked ? 'liked' : ''}">${isLiked ? '❤️' : '🤍'}</button>
+            </div>
+        `;
+
+        card.onclick = () => playTrack(trackData);
+
+        const likeBtn = card.querySelectorAll('.action-btn')[1];
+        likeBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleLikeTrack(trackData);
+            likeBtn.classList.toggle('liked');
+            likeBtn.innerText = favoriteTracks.some(t => t.id === trackData.id) ? '❤️' : '🤍';
+        };
+
+        carouselEl.appendChild(card);
+    });
+}
+
+// 5. Pencarian Musik YouTube
+async function searchMusic() {
+    const queryInput = document.getElementById('searchInput');
+    if (!queryInput) return;
+    const query = queryInput.value;
+    if (!query) return;
+
+    const catalogContainer = document.getElementById('ytMusicCatalog');
+    document.getElementById('sectionTitle').innerText = `🔍 Hasil Pencarian: "${query}"`;
+    
+    catalogContainer.innerHTML = `
+        <div class="catalog-shelf">
+            <div class="shelf-carousel" id="carousel-search">
+                <p class="empty-state">Mencari lagu di YouTube Music...</p>
+            </div>
+        </div>
+    `;
+
+    fetchYouTubeCatalog(query + " music audio", "carousel-search");
+}
+
+// 6. Player Core Controls
+function togglePlay() {
+    if (!player || !currentTrackData) {
+        alert("Belum ada lagu yang dipilih!");
+        return;
+    }
+    if (isPlaying) {
+        player.pauseVideo();
+    } else {
+        player.playVideo();
+    }
+}
+
+function adjustMainVolume() {
+    const volInput = document.getElementById('mainVolume');
+    if (!volInput) return;
+    const vol = volInput.value * 100;
+    if (player && player.setVolume) player.setVolume(vol);
+}
+
 function updateMediaSession(title, artist, coverUrl) {
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: title,
-            artist: artist,
-            album: 'Beacon BeatVibes',
-            artwork: [
-                { src: coverUrl, sizes: '512x512', type: 'image/jpeg' }
-            ]
+            title: title, artist: artist, album: 'Beacon BeatVibes',
+            artwork: [{ src: coverUrl, sizes: '512x512', type: 'image/jpeg' }]
         });
 
         navigator.mediaSession.setActionHandler('play', () => togglePlay());
@@ -99,18 +257,18 @@ function updateMediaSession(title, artist, coverUrl) {
     }
 }
 
-// ----------------------------------------------------
-// 3. QUEUE & HISTORY SYSTEM
-// ----------------------------------------------------
-function addToQueue(track) {
-    queueTracks.push(track);
-    renderQueue();
+// 7. Antrean, Riwayat, & Favorit
+function addToQueue(track) { 
+    queueTracks.push(track); 
+    renderQueue(); 
+    alert(`Berhasil menambahkan "${track.title}" ke antrean!`);
 }
 
 function renderQueue() {
     const queueList = document.getElementById('queueList');
     const queueCount = document.getElementById('queueCount');
-    
+    if (!queueList || !queueCount) return;
+
     queueCount.innerText = `${queueTracks.length} Lagu`;
 
     if (queueTracks.length === 0) {
@@ -136,9 +294,9 @@ function renderQueue() {
     });
 }
 
-function removeFromQueue(index) {
-    queueTracks.splice(index, 1);
-    renderQueue();
+function removeFromQueue(index) { 
+    queueTracks.splice(index, 1); 
+    renderQueue(); 
 }
 
 function playNextInQueue() {
@@ -146,16 +304,13 @@ function playNextInQueue() {
         const nextTrack = queueTracks.shift();
         renderQueue();
         playTrack(nextTrack);
-    } else {
-        alert("Antrean lagu sudah habis.");
     }
 }
 
 function addToHistory(track) {
     historyTracks = historyTracks.filter(t => t.id !== track.id);
     historyTracks.unshift(track);
-    if (historyTracks.length > 10) historyTracks.pop(); // Max 10 riwayat
-
+    if (historyTracks.length > 10) historyTracks.pop();
     localStorage.setItem('beacon_history_tracks', JSON.stringify(historyTracks));
     renderHistory();
 }
@@ -163,6 +318,7 @@ function addToHistory(track) {
 function renderHistory() {
     const historyList = document.getElementById('historyList');
     const historyCount = document.getElementById('historyCount');
+    if (!historyList || !historyCount) return;
 
     historyCount.innerText = `${historyTracks.length} Lagu`;
 
@@ -189,94 +345,10 @@ function renderHistory() {
     });
 }
 
-// ----------------------------------------------------
-// 4. MINI LYRICS DISPLAY
-// ----------------------------------------------------
-async function toggleLyricsModal() {
-    const modal = document.getElementById('lyricsModal');
-    modal.classList.toggle('active');
-
-    if (modal.classList.contains('active') && currentTrackData) {
-        const lyricsBody = document.getElementById('lyricsBody');
-        lyricsBody.innerText = "Mencari lirik...";
-
-        try {
-            const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(currentTrackData.artist)}/${encodeURIComponent(currentTrackData.title)}`);
-            const data = await res.json();
-
-            if (data.lyrics) {
-                lyricsBody.innerText = data.lyrics;
-            } else {
-                lyricsBody.innerText = "Maaf, lirik tidak ditemukan untuk lagu ini.";
-            }
-        } catch (err) {
-            lyricsBody.innerText = "Lirik tidak dapat dimuat saat ini.";
-        }
-    }
-}
-
-// ----------------------------------------------------
-// SPOTIFY ENGINE & CORE AUDIO PLAYER
-// ----------------------------------------------------
-function playTrack(track) {
-    if (audioCtx && audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-    initVisualizer();
-
-    currentTrackData = track;
-
-    document.getElementById('playerTitle').innerText = track.title;
-    document.getElementById('playerArtist').innerText = track.artist;
-    document.getElementById('playerCover').src = track.coverUrl;
-
-    if (!track.previewUrl) {
-        alert("Track ini tidak menyediakan pratinjau audio gratis.");
-        return;
-    }
-
-    currentAudio.src = track.previewUrl;
-    currentAudio.play();
-    isPlaying = true;
-    document.getElementById('playBtn').innerText = '⏸';
-
-    // Panggil Fitur Integrasi
-    addToHistory(track);
-    updateMediaSession(track.title, track.artist, track.coverUrl);
-}
-
-currentAudio.addEventListener('ended', () => {
-    playNextInQueue();
-});
-
-function togglePlay() {
-    if (!currentAudio.src) return;
-
-    if (isPlaying) {
-        currentAudio.pause();
-        document.getElementById('playBtn').innerText = '▶';
-        isPlaying = false;
-    } else {
-        currentAudio.play();
-        document.getElementById('playBtn').innerText = '⏸';
-        isPlaying = true;
-    }
-}
-
-function adjustMainVolume() {
-    currentAudio.volume = document.getElementById('mainVolume').value;
-}
-
-// ----------------------------------------------------
-// BOOKMARK / LIKE SYSTEM
-// ----------------------------------------------------
 function toggleLikeTrack(track) {
     const index = favoriteTracks.findIndex(t => t.id === track.id);
-    if (index === -1) {
-        favoriteTracks.push(track);
-    } else {
-        favoriteTracks.splice(index, 1);
-    }
+    if (index === -1) favoriteTracks.push(track);
+    else favoriteTracks.splice(index, 1);
 
     localStorage.setItem('beacon_fav_tracks', JSON.stringify(favoriteTracks));
     renderFavorites();
@@ -286,6 +358,7 @@ function renderFavorites() {
     const favSection = document.getElementById('favSection');
     const favSongList = document.getElementById('favSongList');
     const favCount = document.getElementById('favCount');
+    if (!favSection || !favSongList || !favCount) return;
 
     if (favoriteTracks.length === 0) {
         favSection.style.display = 'none';
@@ -299,7 +372,6 @@ function renderFavorites() {
     favoriteTracks.forEach(track => {
         const card = document.createElement('div');
         card.className = 'smart-track-card';
-
         card.innerHTML = `
             <div class="track-info-group">
                 <img src="${track.coverUrl}" alt="cover">
@@ -309,127 +381,67 @@ function renderFavorites() {
                 </div>
             </div>
             <div class="card-actions">
-                <button class="action-btn liked" data-id="${track.id}">❤️</button>
+                <button class="action-btn liked">❤️</button>
             </div>
         `;
-
         card.querySelector('.track-info-group').onclick = () => playTrack(track);
         card.querySelector('.action-btn').onclick = (e) => {
             e.stopPropagation();
             toggleLikeTrack(track);
         };
-
         favSongList.appendChild(card);
     });
 }
 
-// ----------------------------------------------------
-// SPOTIFY SEARCH & API PIPELINE
-// ----------------------------------------------------
-function loginSpotify() {
-    if (CLIENT_ID === 'MASUKKAN_SPOTIFY_CLIENT_ID_KAMU') {
-        alert("Masukkan Client ID Spotify di file script.js terlebih dahulu.");
-        return;
-    }
-    const authUrl = `https://accounts.spotify.com/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES.join(' '))}`;
-    window.location.href = authUrl;
-}
+// 8. Visualizer & Lyrics
+async function toggleLyricsModal() {
+    const modal = document.getElementById('lyricsModal');
+    modal.classList.toggle('active');
 
-function checkTokenFromUrl() {
-    const hash = window.location.hash;
-    if (hash) {
-        const params = new URLSearchParams(hash.substring(1));
-        accessToken = params.get('access_token');
-        if (accessToken) {
-            document.getElementById('statusText').innerText = "Connected";
-            document.getElementById('statusDot').style.backgroundColor = "var(--status-green)";
-            document.getElementById('statusDot').style.boxShadow = "0 0 10px var(--status-green)";
-            document.getElementById('loginBtn').innerText = "Active ⚡";
-            window.location.hash = '';
-            
-            searchInitialSongs();
+    if (modal.classList.contains('active') && currentTrackData) {
+        const lyricsBody = document.getElementById('lyricsBody');
+        lyricsBody.innerText = "Mencari lirik...";
+
+        const cleanTitle = currentTrackData.title.replace(/\([^)]*\)|\[[^\]]*\]|Official|Music|Video|Audio/gi, '').trim();
+
+        try {
+            const res = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(currentTrackData.artist)}/${encodeURIComponent(cleanTitle)}`);
+            const data = await res.json();
+            lyricsBody.innerText = data.lyrics || "Maaf, lirik tidak ditemukan untuk lagu ini.";
+        } catch (err) {
+            lyricsBody.innerText = "Lirik tidak dapat dimuat saat ini.";
         }
     }
 }
 
-async function searchSpotify() {
-    const query = document.getElementById('searchInput').value;
-    if (!query || !accessToken) return;
+function startFakeVisualizer() {
+    const canvas = document.getElementById('visualizerCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
 
-    document.getElementById('sectionTitle').innerText = `Hasil: "${query}"`;
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const bars = 25;
+        const barWidth = canvas.width / bars;
 
-    try {
-        const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=12`, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
-        const data = await response.json();
-        renderSongs(data.tracks.items);
-    } catch (err) {
-        console.error("Error API:", err);
+        for (let i = 0; i < bars; i++) {
+            const barHeight = Math.random() * canvas.height;
+            ctx.fillStyle = '#00f3ff';
+            ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 2, barHeight);
+        }
+        animFrameId = requestAnimationFrame(animate);
     }
+    stopFakeVisualizer();
+    animate();
 }
 
-async function searchInitialSongs() {
-    try {
-        const response = await fetch(`https://api.spotify.com/v1/search?q=Pop%20Indonesia&type=track&limit=9`, {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        });
-        const data = await response.json();
-        renderSongs(data.tracks.items);
-    } catch (err) {
-        console.error(err);
-    }
+function stopFakeVisualizer() {
+    if (animFrameId) cancelAnimationFrame(animFrameId);
+    const canvas = document.getElementById('visualizerCanvas');
+    if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function renderSongs(tracks) {
-    const songListEl = document.getElementById('songList');
-    songListEl.innerHTML = '';
-
-    tracks.forEach(track => {
-        const card = document.createElement('div');
-        card.className = 'smart-track-card';
-        
-        const trackData = {
-            id: track.id,
-            title: track.name,
-            artist: track.artists.map(a => a.name).join(', '),
-            coverUrl: track.album.images[1]?.url || 'https://via.placeholder.com/50',
-            previewUrl: track.preview_url
-        };
-
-        const isLiked = favoriteTracks.some(t => t.id === trackData.id);
-
-        card.innerHTML = `
-            <div class="track-info-group">
-                <img src="${trackData.coverUrl}" alt="cover">
-                <div class="track-meta">
-                    <div class="title">${trackData.title}</div>
-                    <div class="artist">${trackData.artist}</div>
-                </div>
-            </div>
-            <div class="card-actions">
-                <button class="action-btn" title="Tambah ke Antrean" onclick="event.stopPropagation(); addToQueue(${JSON.stringify(trackData).replace(/"/g, '&quot;')})">➕</button>
-                <button class="action-btn ${isLiked ? 'liked' : ''}">${isLiked ? '❤️' : '🤍'}</button>
-            </div>
-        `;
-
-        card.querySelector('.track-info-group').onclick = () => playTrack(trackData);
-        
-        const likeBtn = card.querySelectorAll('.action-btn')[1];
-        likeBtn.onclick = (e) => {
-            e.stopPropagation();
-            toggleLikeTrack(trackData);
-            likeBtn.classList.toggle('liked');
-            likeBtn.innerText = favoriteTracks.some(t => t.id === trackData.id) ? '❤️' : '🤍';
-        };
-
-        songListEl.appendChild(card);
-    });
-}
-
-// ----------------------------------------------------
-// SLEEP TIMER & AMBIENCE
-// ----------------------------------------------------
+// 9. Sleep Timer & Ambience
 function setSleepTimer(minutes) {
     cancelSleepTimer();
     remainingSeconds = minutes * 60;
@@ -442,7 +454,8 @@ function setSleepTimer(minutes) {
         if (remainingSeconds <= 0) {
             stopAllAudio();
             cancelSleepTimer();
-            document.getElementById('timerDisplay').innerText = "Timer Selesai (Audio Dimatikan)";
+            const timerDisplay = document.getElementById('timerDisplay');
+            if(timerDisplay) timerDisplay.innerText = "Timer Selesai";
         }
     }, 1000);
 }
@@ -450,27 +463,38 @@ function setSleepTimer(minutes) {
 function cancelSleepTimer() {
     if (sleepTimerTimeout) clearTimeout(sleepTimerTimeout);
     if (sleepTimerInterval) clearInterval(sleepTimerInterval);
-    document.getElementById('timerDisplay').innerText = "Timer: Off";
+    const timerDisplay = document.getElementById('timerDisplay');
+    if(timerDisplay) timerDisplay.innerText = "Timer: Off";
 }
 
 function updateTimerDisplay() {
+    const timerDisplay = document.getElementById('timerDisplay');
+    if (!timerDisplay) return;
     const m = Math.floor(remainingSeconds / 60);
     const s = remainingSeconds % 60;
-    document.getElementById('timerDisplay').innerText = `Mati dalam: ${m}m ${s < 10 ? '0' : ''}${s}s`;
+    timerDisplay.innerText = `Mati dalam: ${m}m ${s < 10 ? '0' : ''}${s}s`;
 }
 
 function stopAllAudio() {
-    if (isPlaying) togglePlay();
-    document.getElementById('rainVol').value = 0;
-    document.getElementById('cafeVol').value = 0;
-    document.getElementById('fireVol').value = 0;
+    if (isPlaying && player && player.pauseVideo) player.pauseVideo();
+    const rainVol = document.getElementById('rainVol');
+    const cafeVol = document.getElementById('cafeVol');
+    const fireVol = document.getElementById('fireVol');
+    if(rainVol) rainVol.value = 0;
+    if(cafeVol) cafeVol.value = 0;
+    if(fireVol) fireVol.value = 0;
     updateAmbience();
 }
 
 function updateAmbience() {
-    const rainVol = document.getElementById('rainVol').value;
-    const cafeVol = document.getElementById('cafeVol').value;
-    const fireVol = document.getElementById('fireVol').value;
+    const rainVolEl = document.getElementById('rainVol');
+    const cafeVolEl = document.getElementById('cafeVol');
+    const fireVolEl = document.getElementById('fireVol');
+    if(!rainVolEl || !cafeVolEl || !fireVolEl) return;
+
+    const rainVol = rainVolEl.value;
+    const cafeVol = cafeVolEl.value;
+    const fireVol = fireVolEl.value;
 
     document.getElementById('rainVal').innerText = Math.round(rainVol * 100) + '%';
     document.getElementById('cafeVal').innerText = Math.round(cafeVol * 100) + '%';
@@ -480,11 +504,11 @@ function updateAmbience() {
     const cafeAudio = document.getElementById('cafeAudio');
     const fireAudio = document.getElementById('fireAudio');
 
-    rainAudio.volume = rainVol;
-    cafeAudio.volume = cafeVol;
-    fireAudio.volume = fireVol;
+    if(rainAudio) rainAudio.volume = rainVol;
+    if(cafeAudio) cafeAudio.volume = cafeVol;
+    if(fireAudio) fireAudio.volume = fireVol;
 
-    if (rainVol > 0 && rainAudio.paused) rainAudio.play();
-    if (cafeVol > 0 && cafeAudio.paused) cafeAudio.play();
-    if (fireVol > 0 && fireAudio.paused) fireAudio.play();
+    if (rainVol > 0 && rainAudio && rainAudio.paused) rainAudio.play();
+    if (cafeVol > 0 && cafeAudio && cafeAudio.paused) cafeAudio.play();
+    if (fireVol > 0 && fireAudio && fireAudio.paused) fireAudio.play();
 }
