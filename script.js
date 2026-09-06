@@ -1,4 +1,4 @@
-const CLIENT_ID = 'MASUKKAN_SPOTIFY_CLIENT_ID_KAMU';
+const CLIENT_ID = '70d85ec052784d0884d5887c1b9e9377';
 const REDIRECT_URI = window.location.origin + window.location.pathname;
 const SCOPES = ['user-read-private'];
 
