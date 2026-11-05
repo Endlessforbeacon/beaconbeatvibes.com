@@ -67,7 +67,7 @@
                 <div class="card-tag">ENGINE STATUS</div>
                 <div class="status-indicator">
                     <span class="dot" id="statusDot"></span>
-                    <span id="statusText">YouTube API Engine Ready</span>
+                    <span id="statusText">Audio Engine Ready</span>
                 </div>
                 <p class="status-desc">Beacon BeatVibes High Quality Full Stream Pipeline</p>
 
@@ -167,7 +167,8 @@
         </div>
     </div>
 
-    <div id="ytPlayer" style="display: none;"></div>
+    <!-- WADAH AUDIO HTML5 STREAM (BEBAS IKLAN) -->
+    <audio id="mainAudioStream" preload="auto"></audio>
 
     <audio id="rainAudio" loop src="https://assets.mixkit.co/active_storage/sfx/2515/2515-preview.mp3"></audio>
     <audio id="cafeAudio" loop src="https://assets.mixkit.co/active_storage/sfx/3006/3006-preview.mp3"></audio>
@@ -218,7 +219,6 @@
         </div>
     </footer>
 
-    <script src="https://www.youtube.com/iframe_api"></script>
     <script src="script.js"></script>
 </body>
 </html>
