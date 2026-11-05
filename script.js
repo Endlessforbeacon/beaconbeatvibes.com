@@ -1,5 +1,5 @@
 // ==========================================
-// BEACON BEATVIBES - YOUTUBE MUSIC ENGINE
+// BEACON BEATVIBES - YOUTUBE MUSIC ENGINE (STRICT AUDIO ONLY)
 // ==========================================
 
 const YOUTUBE_API_KEY = "AIzaSyC6wP1LBnMYVa975zKwGObtVtMetoY7xb4";
@@ -21,16 +21,16 @@ let remainingSeconds = 0;
 // Visualizer Canvas State
 let animFrameId = null;
 
-// KATALOG KATEGORI KHUSUS AUDIO SAJA (MENGHINDARI MUSIC VIDEO & LYRICS VIDEO)
+// KATALOG KATEGORI KHUSUS AUDIO MURNI (TOPIC / OFFICIAL AUDIO)
 const CATALOG_SECTIONS = [
-    { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Top Billboard Hits topic audio' },
-    { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia Hits topic audio' },
-    { id: 'west_rock', title: '🎸 Western Rock & Alternative', query: 'Best Classic Rock Alternative topic audio' },
-    { id: 'indo_rock', title: '⚡ Indo Rock & Band Hits', query: 'Lagu Band Pop Rock Indonesia topic audio' },
-    { id: 'rnb_pop', title: '🎧 Global R&B Pop Vibing', query: 'Top R&B Pop Song topic audio' },
-    { id: 'chill_indie', title: '☕ Indie & Acoustic Chill Indo', query: 'Lagu Indie Akustik Indonesia topic audio' },
-    { id: 'throwback_west', title: '📻 2000s Western Throwback', query: '2000s Pop Rock Hits Western topic audio' },
-    { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Indonesia Pop Nostalgia 2000an topic audio' }
+    { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Billboard Top Hits official audio' },
+    { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia official audio' },
+    { id: 'west_rock', title: '🎸 Western Rock & Alternative', query: 'Classic Rock Alternative official audio' },
+    { id: 'indo_rock', title: '⚡ Indo Rock & Band Hits', query: 'Lagu Band Rock Indonesia official audio' },
+    { id: 'rnb_pop', title: '🎧 Global R&B Pop Vibing', query: 'Top R&B Pop official audio' },
+    { id: 'chill_indie', title: '☕ Indie & Acoustic Chill Indo', query: 'Indie Akustik Indonesia official audio' },
+    { id: 'throwback_west', title: '📻 2000s Western Throwback', query: '2000s Pop Rock Western official audio' },
+    { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Pop Indonesia Nostalgia official audio' }
 ];
 
 // 1. Inisialisasi YouTube Player
@@ -50,7 +50,7 @@ function onYouTubeIframeAPIReady() {
         events: { 
             'onReady': () => {
                 console.log("YouTube Engine Ready & Auto Loading Catalog!");
-                initYouTubeMusicCatalog(); // Otomatis muat katalog begitu siap
+                initYouTubeMusicCatalog();
                 renderFavorites();
                 renderHistory();
                 renderQueue();
@@ -84,15 +84,20 @@ function onPlayerStateChange(event) {
 function onPlayerError(event) {
     console.warn("YouTube Player Error Code:", event.data);
     if (event.data === 101 || event.data === 150 || event.data === 100) {
-        alert("Lagu ini dibatasi untuk diputar di luar aplikasi. Memutar lagu berikutnya...");
+        alert("Lagu ini memiliki batasan pemutaran eksternal. Melewati ke lagu berikutnya...");
         playNextInQueue();
     }
 }
 
-// 3. Fungsi Putar Lagu Instan Tanpa Loading Lama
+// 3. Fungsi Putar Lagu Tepat Sasaran
 function playTrack(track) {
     if (!player || typeof player.loadVideoById !== 'function') {
         alert("Player sedang disiapkan, silakan klik sekali lagi.");
+        return;
+    }
+
+    if (!track || !track.id) {
+        alert("Data lagu tidak valid!");
         return;
     }
 
@@ -102,7 +107,6 @@ function playTrack(track) {
     document.getElementById('playerArtist').innerText = track.artist;
     document.getElementById('playerCover').src = track.coverUrl;
 
-    // Memuat langsung dengan kualitas tinggi & langsung putar
     player.loadVideoById({
         videoId: track.id,
         suggestedQuality: 'medium'
@@ -112,13 +116,12 @@ function playTrack(track) {
     updateMediaSession(track.title, track.artist, track.coverUrl);
 }
 
-// 4. Fetch Katalog Secara Paralel (⚡ Super Cepat Tanpa Loading Lama)
+// 4. Fetch Katalog Secara Paralel dengan Filter Ketat
 async function initYouTubeMusicCatalog() {
     const catalogContainer = document.getElementById('ytMusicCatalog');
     if (!catalogContainer) return;
     catalogContainer.innerHTML = '';
 
-    // Buat kerangka rak kategori terlebih dahulu secara instan
     CATALOG_SECTIONS.forEach(section => {
         const shelfEl = document.createElement('div');
         shelfEl.className = 'catalog-shelf';
@@ -131,7 +134,6 @@ async function initYouTubeMusicCatalog() {
         catalogContainer.appendChild(shelfEl);
     });
 
-    // Jalankan seluruh fetch data kategori secara SERENTAK (Paralel) dengan Promise.all
     await Promise.all(
         CATALOG_SECTIONS.map(section => 
             fetchYouTubeCatalog(section.query, `carousel-${section.id}`)
@@ -143,19 +145,29 @@ async function fetchYouTubeCatalog(query, carouselId) {
     const carouselEl = document.getElementById(carouselId);
     if (!carouselEl) return;
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=15&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
 
     try {
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.items && data.items.length > 0) {
+            // FILTER KETAT: Membuang video lirik, karaoke, live, cover, mix, dll.
             const filteredItems = data.items.filter(item => {
                 const titleLower = item.snippet.title.toLowerCase();
-                return !titleLower.includes('lyrics video') && !titleLower.includes('karaoke') && !titleLower.includes('parody');
+                
+                const unwantedKeywords = [
+                    'lyrics', 'lirik', 'karaoke', 'parody', 'parodi', 
+                    'live', 'concert', 'konser', 'full album', 'kumpulan', 
+                    'mix', 'playlist', 'dj remix', 'nonstop', 'medley', 'cover'
+                ];
+
+                return !unwantedKeywords.some(keyword => titleLower.includes(keyword));
             });
 
-            const songsToRender = (filteredItems.length > 0 ? filteredItems : data.items).map(item => ({
+            const sourceList = filteredItems.length >= 3 ? filteredItems : data.items;
+
+            const songsToRender = sourceList.slice(0, 10).map(item => ({
                 id: item.id.videoId,
                 title: item.snippet.title,
                 artist: item.snippet.channelTitle,
@@ -169,6 +181,57 @@ async function fetchYouTubeCatalog(query, carouselId) {
     } catch (err) {
         carouselEl.innerHTML = '<p class="empty-state">Gagal memuat katalog jaringan.</p>';
     }
+}
+
+function renderCardsToCarousel(songs, carouselEl) {
+    carouselEl.innerHTML = '';
+
+    songs.forEach(trackData => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = trackData.title;
+        trackData.title = tempDiv.textContent || tempDiv.innerText || "";
+
+        const isLiked = favoriteTracks.some(t => t.id === trackData.id);
+
+        const card = document.createElement('div');
+        card.className = 'yt-music-card';
+        card.innerHTML = `
+            <div class="card-thumb-wrapper">
+                <img src="${trackData.coverUrl}" alt="cover" loading="lazy" onerror="this.src='https://via.placeholder.com/120/1a1a24/ffffff?text=BEACON'">
+                <div class="play-hover-btn">▶</div>
+            </div>
+            <div class="yt-card-meta">
+                <div class="yt-card-title">${trackData.title}</div>
+                <div class="yt-card-artist">${trackData.artist}</div>
+            </div>
+            <div class="card-quick-actions">
+                <button class="action-btn queue-add-btn" title="Tambah ke Antrean">➕</button>
+                <button class="action-btn like-btn ${isLiked ? 'liked' : ''}">${isLiked ? '❤️' : '🤍'}</button>
+            </div>
+        `;
+
+        // Event klik aman agar lagu yang diputar sesuai sasaran kartu
+        card.onclick = (e) => {
+            if (e.target.closest('.card-quick-actions')) return;
+            playTrack(trackData);
+        };
+
+        const queueBtn = card.querySelector('.queue-add-btn');
+        queueBtn.onclick = (e) => {
+            e.stopPropagation();
+            addToQueue(trackData);
+        };
+
+        const likeBtn = card.querySelector('.like-btn');
+        likeBtn.onclick = (e) => {
+            e.stopPropagation();
+            toggleLikeTrack(trackData);
+            likeBtn.classList.toggle('liked', favoriteTracks.some(t => t.id === trackData.id));
+            likeBtn.innerText = favoriteTracks.some(t => t.id === trackData.id) ? '❤️' : '🤍';
+        };
+
+        carouselEl.appendChild(card);
+    });
 }
 
 // 5. Pencarian Musik
@@ -189,7 +252,7 @@ async function searchMusic() {
         </div>
     `;
 
-    fetchYouTubeCatalog(query + " topic audio", "carousel-search");
+    fetchYouTubeCatalog(query + " official audio", "carousel-search");
 }
 
 // 6. Player Controls
@@ -258,6 +321,7 @@ function renderQueue() {
             </div>
             <button class="action-btn" onclick="removeFromQueue(${index})">✕</button>
         `;
+        card.querySelector('.track-info-group').onclick = () => playTrack(track);
         queueList.appendChild(card);
     });
 }
