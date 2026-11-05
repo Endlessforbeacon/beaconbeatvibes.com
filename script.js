@@ -112,13 +112,14 @@ function playTrack(track) {
     updateMediaSession(track.title, track.artist, track.coverUrl);
 }
 
-// 4. Fetch Katalog Otomatis (Tanpa Tombol Reload)
+// 4. Fetch Katalog Secara Paralel (⚡ Super Cepat Tanpa Loading Lama)
 async function initYouTubeMusicCatalog() {
     const catalogContainer = document.getElementById('ytMusicCatalog');
     if (!catalogContainer) return;
     catalogContainer.innerHTML = '';
 
-    for (const section of CATALOG_SECTIONS) {
+    // Buat kerangka rak kategori terlebih dahulu secara instan
+    CATALOG_SECTIONS.forEach(section => {
         const shelfEl = document.createElement('div');
         shelfEl.className = 'catalog-shelf';
         shelfEl.innerHTML = `
@@ -128,18 +129,20 @@ async function initYouTubeMusicCatalog() {
             </div>
         `;
         catalogContainer.appendChild(shelfEl);
-    }
+    });
 
-    for (const section of CATALOG_SECTIONS) {
-        await fetchYouTubeCatalog(section.query, `carousel-${section.id}`);
-    }
+    // Jalankan seluruh fetch data kategori secara SERENTAK (Paralel) dengan Promise.all
+    await Promise.all(
+        CATALOG_SECTIONS.map(section => 
+            fetchYouTubeCatalog(section.query, `carousel-${section.id}`)
+        )
+    );
 }
 
 async function fetchYouTubeCatalog(query, carouselId) {
     const carouselEl = document.getElementById(carouselId);
     if (!carouselEl) return;
 
-    // Filter diperketat untuk memastikan tipe video berfokus pada musik audio
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
 
     try {
@@ -147,7 +150,6 @@ async function fetchYouTubeCatalog(query, carouselId) {
         const data = await res.json();
 
         if (data.items && data.items.length > 0) {
-            // Saring hasil judul untuk membuang string "Music Video" atau "Lyric Video" jika sempat lolos
             const filteredItems = data.items.filter(item => {
                 const titleLower = item.snippet.title.toLowerCase();
                 return !titleLower.includes('lyrics video') && !titleLower.includes('karaoke') && !titleLower.includes('parody');
@@ -167,47 +169,6 @@ async function fetchYouTubeCatalog(query, carouselId) {
     } catch (err) {
         carouselEl.innerHTML = '<p class="empty-state">Gagal memuat katalog jaringan.</p>';
     }
-}
-
-function renderCardsToCarousel(songs, carouselEl) {
-    carouselEl.innerHTML = '';
-
-    songs.forEach(trackData => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = trackData.title;
-        trackData.title = tempDiv.textContent || tempDiv.innerText || "";
-
-        const isLiked = favoriteTracks.some(t => t.id === trackData.id);
-
-        const card = document.createElement('div');
-        card.className = 'yt-music-card';
-        card.innerHTML = `
-            <div class="card-thumb-wrapper">
-                <img src="${trackData.coverUrl}" alt="cover" loading="lazy" onerror="this.src='https://via.placeholder.com/120/1a1a24/ffffff?text=BEACON'">
-                <div class="play-hover-btn">▶</div>
-            </div>
-            <div class="yt-card-meta">
-                <div class="yt-card-title">${trackData.title}</div>
-                <div class="yt-card-artist">${trackData.artist}</div>
-            </div>
-            <div class="card-quick-actions">
-                <button class="action-btn" title="Tambah ke Antrean" onclick="event.stopPropagation(); addToQueue(${JSON.stringify(trackData).replace(/"/g, '&quot;')})">➕</button>
-                <button class="action-btn ${isLiked ? 'liked' : ''}">${isLiked ? '❤️' : '🤍'}</button>
-            </div>
-        `;
-
-        card.onclick = () => playTrack(trackData);
-
-        const likeBtn = card.querySelectorAll('.action-btn')[1];
-        likeBtn.onclick = (e) => {
-            e.stopPropagation();
-            toggleLikeTrack(trackData);
-            likeBtn.classList.toggle('liked');
-            likeBtn.innerText = favoriteTracks.some(t => t.id === trackData.id) ? '❤️' : '🤍';
-        };
-
-        carouselEl.appendChild(card);
-    });
 }
 
 // 5. Pencarian Musik
