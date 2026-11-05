@@ -29,10 +29,6 @@
                 <input type="text" id="searchInput" placeholder="Cari musik Indo atau Internasional..." onkeypress="if(event.key==='Enter') searchMusic()">
                 <button onclick="searchMusic()">Find Vibe</button>
             </div>
-
-            <div class="header-actions">
-                <button class="auth-btn active-engine" onclick="initYouTubeMusicCatalog()">Reload Catalog 🔄</button>
-            </div>
         </header>
 
         <main class="bento-grid">
@@ -121,14 +117,14 @@
                 <div class="feed-header">
                     <div>
                         <h3 id="sectionTitle">🎵 YouTube Music Home Feed (Global & Indo)</h3>
-                        <p class="section-subtext">Katalog lengkap lagu Barat, Indonesia Hits, Rock, Pop, dan Nostalgia</p>
+                        <p class="section-subtext">Katalog lengkap lagu Audio Original Barat & Indonesia Hits</p>
                     </div>
-                    <span class="badge-free">100% Full Stream Engine</span>
+                    <span class="badge-free">100% Audio Stream Engine</span>
                 </div>
                 
                 <div class="yt-music-catalog" id="ytMusicCatalog">
                     <div class="loading-catalog">
-                        <p>⚡ Menyusun katalog YouTube Music lengkap untukmu...</p>
+                        <p>⚡ Menyusun katalog audio otomatis untukmu...</p>
                     </div>
                 </div>
             </section>
@@ -171,7 +167,6 @@
         </div>
     </div>
 
-    <!-- WADAH PLAYER YOUTUBE -->
     <div id="ytPlayer" style="display: none;"></div>
 
     <audio id="rainAudio" loop src="https://assets.mixkit.co/active_storage/sfx/2515/2515-preview.mp3"></audio>
@@ -189,7 +184,7 @@
                     <div class="brand-text">BEACON <span>BEATVIBES</span></div>
                 </div>
                 <p class="footer-desc">
-                    Beacon BeatVibes adalah pemutar musik web interaktif berfitur atmosphere layering, visualizer audio, lirik, dan antrean lagu. Dilengkapi sleep timer serta kontrol background playback untuk pengalaman streaming gratis yang fleksibel dan futuristik.
+                    Beacon BeatVibes adalah pemutar musik web interaktif berfitur atmosphere layering, visualizer audio, lirik, dan antrean lagu.
                 </p>
             </div>
 
@@ -223,7 +218,6 @@
         </div>
     </footer>
 
-    <!-- YouTube IFrame Player API Script (Wajib agar player aktif) -->
     <script src="https://www.youtube.com/iframe_api"></script>
     <script src="script.js"></script>
 </body>

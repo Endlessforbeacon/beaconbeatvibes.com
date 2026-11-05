@@ -21,19 +21,19 @@ let remainingSeconds = 0;
 // Visualizer Canvas State
 let animFrameId = null;
 
-// KATALOG KATEGORI LENGKAP (BARAT & INDONESIA)
+// KATALOG KATEGORI KHUSUS AUDIO SAJA (MENGHINDARI MUSIC VIDEO & LYRICS VIDEO)
 const CATALOG_SECTIONS = [
-    { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Top Billboard Hits Official Audio' },
-    { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia Hits Terpopuler' },
-    { id: 'west_rock', title: '🎸 Western Rock & Alternative', query: 'Best Classic Rock Alternative Song' },
-    { id: 'indo_rock', title: '⚡ Indo Rock & Band Hits', query: 'Lagu Band Pop Rock Indonesia Hits' },
-    { id: 'rnb_pop', title: '🎧 Global R&B Pop Vibing', query: 'Top R&B Pop Song Audio' },
-    { id: 'chill_indie', title: '☕ Indie & Acoustic Chill Indo', query: 'Lagu Indie Akustik Indonesia Hits' },
-    { id: 'throwback_west', title: '📻 2000s Western Throwback', query: '2000s Pop Rock Hits Western Audio' },
-    { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Indonesia Pop Nostalgia 2000an' }
+    { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Top Billboard Hits topic audio' },
+    { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia Hits topic audio' },
+    { id: 'west_rock', title: '🎸 Western Rock & Alternative', query: 'Best Classic Rock Alternative topic audio' },
+    { id: 'indo_rock', title: '⚡ Indo Rock & Band Hits', query: 'Lagu Band Pop Rock Indonesia topic audio' },
+    { id: 'rnb_pop', title: '🎧 Global R&B Pop Vibing', query: 'Top R&B Pop Song topic audio' },
+    { id: 'chill_indie', title: '☕ Indie & Acoustic Chill Indo', query: 'Lagu Indie Akustik Indonesia topic audio' },
+    { id: 'throwback_west', title: '📻 2000s Western Throwback', query: '2000s Pop Rock Hits Western topic audio' },
+    { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Indonesia Pop Nostalgia 2000an topic audio' }
 ];
 
-// 1. Inisialisasi YouTube Player dengan Origin & Handling Lengkap
+// 1. Inisialisasi YouTube Player
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('ytPlayer', {
         height: '0', 
@@ -42,12 +42,15 @@ function onYouTubeIframeAPIReady() {
             'autoplay': 1, 
             'controls': 0, 
             'disablekb': 1,
+            'fs': 0,
+            'rel': 0,
+            'iv_load_policy': 3,
             'origin': window.location.origin 
         },
         events: { 
             'onReady': () => {
-                console.log("YouTube Engine Ready!");
-                initYouTubeMusicCatalog(); // Otomatis muat katalog saat player siap
+                console.log("YouTube Engine Ready & Auto Loading Catalog!");
+                initYouTubeMusicCatalog(); // Otomatis muat katalog begitu siap
                 renderFavorites();
                 renderHistory();
                 renderQueue();
@@ -58,7 +61,7 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
-// 2. Pantau Perubahan Status Player (Play, Pause, Ended)
+// 2. Pantau Perubahan Status Player
 function onPlayerStateChange(event) {
     const playBtn = document.getElementById('playBtn');
     
@@ -74,46 +77,42 @@ function onPlayerStateChange(event) {
         isPlaying = false;
         if(playBtn) playBtn.innerText = "▶";
         stopFakeVisualizer();
-        playNextInQueue(); // Otomatis putar antrean selanjutnya jika lagu habis
-    }
-}
-
-// Menangani Error (Misal: Video dibatasi/embed dilarang)
-function onPlayerError(event) {
-    console.warn("YouTube Player Error Code:", event.data);
-    if (event.data === 101 || event.data === 150 || event.data === 100) {
-        alert("Lagu ini dibatasi oleh hak cipta YouTube untuk diputar di luar aplikasi. Memutar lagu berikutnya...");
         playNextInQueue();
     }
 }
 
-// 3. Fungsi Utama Pemutaran Lagu yang Diperbaiki
+function onPlayerError(event) {
+    console.warn("YouTube Player Error Code:", event.data);
+    if (event.data === 101 || event.data === 150 || event.data === 100) {
+        alert("Lagu ini dibatasi untuk diputar di luar aplikasi. Memutar lagu berikutnya...");
+        playNextInQueue();
+    }
+}
+
+// 3. Fungsi Putar Lagu Instan Tanpa Loading Lama
 function playTrack(track) {
     if (!player || typeof player.loadVideoById !== 'function') {
-        alert("Player YouTube sedang disiapkan, silakan tunggu 2 detik lalu klik lagi.");
+        alert("Player sedang disiapkan, silakan klik sekali lagi.");
         return;
     }
 
     currentTrackData = track;
 
-    // Update UI Metadata
     document.getElementById('playerTitle').innerText = track.title;
     document.getElementById('playerArtist').innerText = track.artist;
     document.getElementById('playerCover').src = track.coverUrl;
 
-    // Muat dan putar video via YouTube IFrame API
+    // Memuat langsung dengan kualitas tinggi & langsung putar
     player.loadVideoById({
         videoId: track.id,
-        suggestedQuality: 'small'
+        suggestedQuality: 'medium'
     });
-
-    player.playVideo();
 
     addToHistory(track);
     updateMediaSession(track.title, track.artist, track.coverUrl);
 }
 
-// 4. Fetch Katalog dari YouTube Data API v3
+// 4. Fetch Katalog Otomatis (Tanpa Tombol Reload)
 async function initYouTubeMusicCatalog() {
     const catalogContainer = document.getElementById('ytMusicCatalog');
     if (!catalogContainer) return;
@@ -125,7 +124,7 @@ async function initYouTubeMusicCatalog() {
         shelfEl.innerHTML = `
             <div class="shelf-title"><span>${section.title}</span></div>
             <div class="shelf-carousel" id="carousel-${section.id}">
-                <p class="empty-state">Memuat lagu dari YouTube Music...</p>
+                <p class="empty-state">Memuat audio...</p>
             </div>
         `;
         catalogContainer.appendChild(shelfEl);
@@ -133,7 +132,6 @@ async function initYouTubeMusicCatalog() {
 
     for (const section of CATALOG_SECTIONS) {
         await fetchYouTubeCatalog(section.query, `carousel-${section.id}`);
-        await new Promise(r => setTimeout(r, 100));
     }
 }
 
@@ -141,21 +139,30 @@ async function fetchYouTubeCatalog(query, carouselId) {
     const carouselEl = document.getElementById(carouselId);
     if (!carouselEl) return;
 
-    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
+    // Filter diperketat untuk memastikan tipe video berfokus pada musik audio
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query)}&type=video&videoCategoryId=10&key=${YOUTUBE_API_KEY}`;
 
     try {
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.items && data.items.length > 0) {
-            renderCardsToCarousel(data.items.map(item => ({
+            // Saring hasil judul untuk membuang string "Music Video" atau "Lyric Video" jika sempat lolos
+            const filteredItems = data.items.filter(item => {
+                const titleLower = item.snippet.title.toLowerCase();
+                return !titleLower.includes('lyrics video') && !titleLower.includes('karaoke') && !titleLower.includes('parody');
+            });
+
+            const songsToRender = (filteredItems.length > 0 ? filteredItems : data.items).map(item => ({
                 id: item.id.videoId,
                 title: item.snippet.title,
                 artist: item.snippet.channelTitle,
                 coverUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url
-            })), carouselEl);
+            }));
+
+            renderCardsToCarousel(songsToRender, carouselEl);
         } else {
-            carouselEl.innerHTML = '<p class="empty-state">Tidak ada lagu ditemukan.</p>';
+            carouselEl.innerHTML = '<p class="empty-state">Tidak ada audio ditemukan.</p>';
         }
     } catch (err) {
         carouselEl.innerHTML = '<p class="empty-state">Gagal memuat katalog jaringan.</p>';
@@ -176,7 +183,7 @@ function renderCardsToCarousel(songs, carouselEl) {
         card.className = 'yt-music-card';
         card.innerHTML = `
             <div class="card-thumb-wrapper">
-                <img src="${trackData.coverUrl}" alt="cover" onerror="this.src='https://via.placeholder.com/120/1a1a24/ffffff?text=BEACON'">
+                <img src="${trackData.coverUrl}" alt="cover" loading="lazy" onerror="this.src='https://via.placeholder.com/120/1a1a24/ffffff?text=BEACON'">
                 <div class="play-hover-btn">▶</div>
             </div>
             <div class="yt-card-meta">
@@ -203,31 +210,31 @@ function renderCardsToCarousel(songs, carouselEl) {
     });
 }
 
-// 5. Pencarian Musik YouTube
+// 5. Pencarian Musik
 async function searchMusic() {
     const queryInput = document.getElementById('searchInput');
     if (!queryInput) return;
-    const query = queryInput.value;
+    const query = queryInput.value.trim();
     if (!query) return;
 
     const catalogContainer = document.getElementById('ytMusicCatalog');
-    document.getElementById('sectionTitle').innerText = `🔍 Hasil Pencarian: "${query}"`;
+    document.getElementById('sectionTitle').innerText = `🔍 Hasil Pencarian Audio: "${query}"`;
     
     catalogContainer.innerHTML = `
         <div class="catalog-shelf">
             <div class="shelf-carousel" id="carousel-search">
-                <p class="empty-state">Mencari lagu di YouTube Music...</p>
+                <p class="empty-state">Mencari audio di YouTube Music...</p>
             </div>
         </div>
     `;
 
-    fetchYouTubeCatalog(query + " music audio", "carousel-search");
+    fetchYouTubeCatalog(query + " topic audio", "carousel-search");
 }
 
-// 6. Player Core Controls
+// 6. Player Controls
 function togglePlay() {
     if (!player || !currentTrackData) {
-        alert("Belum ada lagu yang dipilih!");
+        alert("Pilih track musik terlebih dahulu!");
         return;
     }
     if (isPlaying) {
@@ -282,7 +289,7 @@ function renderQueue() {
         card.className = 'smart-track-card';
         card.innerHTML = `
             <div class="track-info-group">
-                <img src="${track.coverUrl}" alt="cover">
+                <img src="${track.coverUrl}" alt="cover" loading="lazy">
                 <div class="track-meta">
                     <div class="title">${track.title}</div>
                     <div class="artist">${track.artist}</div>
@@ -333,7 +340,7 @@ function renderHistory() {
         card.className = 'smart-track-card';
         card.innerHTML = `
             <div class="track-info-group">
-                <img src="${track.coverUrl}" alt="cover">
+                <img src="${track.coverUrl}" alt="cover" loading="lazy">
                 <div class="track-meta">
                     <div class="title">${track.title}</div>
                     <div class="artist">${track.artist}</div>
@@ -374,7 +381,7 @@ function renderFavorites() {
         card.className = 'smart-track-card';
         card.innerHTML = `
             <div class="track-info-group">
-                <img src="${track.coverUrl}" alt="cover">
+                <img src="${track.coverUrl}" alt="cover" loading="lazy">
                 <div class="track-meta">
                     <div class="title">${track.title}</div>
                     <div class="artist">${track.artist}</div>
@@ -421,7 +428,7 @@ function startFakeVisualizer() {
 
     function animate() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const bars = 25;
+        const bars = 20;
         const barWidth = canvas.width / bars;
 
         for (let i = 0; i < bars; i++) {
