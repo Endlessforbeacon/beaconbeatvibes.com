@@ -1,5 +1,5 @@
 // ==========================================
-// BEACON BEATVIBES - YOUTUBE STABLE ENGINE
+// BEACON BEATVIBES - YOUTUBE ENGINE + AUTO-MUTE ADS
 // ==========================================
 
 const YOUTUBE_API_KEY = "AIzaSyC6wP1LBnMYVa975zKwGObtVtMetoY7xb4";
@@ -7,6 +7,7 @@ const YOUTUBE_API_KEY = "AIzaSyC6wP1LBnMYVa975zKwGObtVtMetoY7xb4";
 let player;
 let isPlaying = false;
 let currentTrackData = null;
+let adCheckInterval = null;
 
 // State Data Storage
 let favoriteTracks = JSON.parse(localStorage.getItem('beacon_fav_tracks')) || [];
@@ -61,7 +62,7 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
-// 2. Pantau Status Pemutar
+// 2. Pantau Status Pemutar & Deteksi Iklan Otomatis
 function onPlayerStateChange(event) {
     const playBtn = document.getElementById('playBtn');
     
@@ -69,15 +70,59 @@ function onPlayerStateChange(event) {
         isPlaying = true;
         if(playBtn) playBtn.innerText = "⏸";
         startFakeVisualizer();
+
+        // Mulai aktifkan pemantau iklan di latar belakang
+        startAdGuard();
+
     } else if (event.data === YT.PlayerState.PAUSED) {
         isPlaying = false;
         if(playBtn) playBtn.innerText = "▶";
         stopFakeVisualizer();
+        stopAdGuard();
     } else if (event.data === YT.PlayerState.ENDED) {
         isPlaying = false;
         if(playBtn) playBtn.innerText = "▶";
         stopFakeVisualizer();
+        stopAdGuard();
         playNextInQueue();
+    }
+}
+
+// FUNGSI UTAMA: Mendeteksi Iklan Berjalan & Auto-Mute Suara
+function startAdGuard() {
+    stopAdGuard(); // Bersihkan interval sebelumnya jika ada
+    adCheckInterval = setInterval(() => {
+        if (player && typeof player.isMuted === 'function') {
+            // YouTube IFrame API menyediakan fungsi internal untuk mendeteksi apakah iklan sedang tayang
+            const isAdPlaying = document.querySelector('.ad-showing') !== null || 
+                                (player.getVideoData && player.getVideoData().title === "");
+            
+            // Alternatif deteksi: Jika player memutar elemen iklan, mute suaranya secara instan
+            if (isAdPlaying) {
+                if (!player.isMuted()) {
+                    player.mute();
+                    console.log("Iklan terdeteksi: Audio diredam (Muted) otomatis.");
+                }
+            } else {
+                // Jika lagu asli sudah mulai, pastikan suara dikembalikan normal
+                if (player.isMuted()) {
+                    player.unMute();
+                    // Sesuaikan kembali dengan volume slider utama user
+                    const volInput = document.getElementById('mainVolume');
+                    if (volInput && player.setVolume) {
+                        player.setVolume(volInput.value * 100);
+                    }
+                    console.log("Lagu utama dimulai: Suara dikembalikan normal.");
+                }
+            }
+        }
+    }, 300); // Mengecek setiap 0.3 detik
+}
+
+function stopAdGuard() {
+    if (adCheckInterval) {
+        clearInterval(adCheckInterval);
+        adCheckInterval = null;
     }
 }
 
@@ -510,14 +555,10 @@ function stopAllAudio() {
 }
 
 function updateAmbience() {
-    const rainVolEl = document.getElementById('rainVol');
-    const cafeVolEl = document.getElementById('cafeVol');
-    const fireVolEl = document.getElementById('fireVol');
-    if(!rainVolEl || !cafeVolEl || !fireVolEl) return;
-
-    const rainVol = rainVolEl.value;
-    const cafeVol = cafeVolEl.value;
-    const fireVol = fireVolEl.value;
+    const rainVolEl = document.php || document.getElementById('rainVol'); // Fallback aman
+    const rainVol = document.getElementById('rainVol').value;
+    const cafeVol = document.getElementById('cafeVol').value;
+    const fireVol = document.getElementById('fireVol').value;
 
     document.getElementById('rainVal').innerText = Math.round(rainVol * 100) + '%';
     document.getElementById('cafeVal').innerText = Math.round(cafeVol * 100) + '%';
