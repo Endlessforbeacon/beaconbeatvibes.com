@@ -1,5 +1,5 @@
 // ==========================================
-// BEACON BEATVIBES - YOUTUBE ENGINE + AUTO-MUTE ADS
+// BEACON BEATVIBES - CLEAN AUDIO & MOBILE RESPONSIVE ENGINE
 // ==========================================
 
 const YOUTUBE_API_KEY = "AIzaSyC6wP1LBnMYVa975zKwGObtVtMetoY7xb4";
@@ -9,20 +9,15 @@ let isPlaying = false;
 let currentTrackData = null;
 let adCheckInterval = null;
 
-// State Data Storage
 let favoriteTracks = JSON.parse(localStorage.getItem('beacon_fav_tracks')) || [];
 let historyTracks = JSON.parse(localStorage.getItem('beacon_history_tracks')) || [];
 let queueTracks = [];
 
-// Sleep Timer State
 let sleepTimerTimeout = null;
 let sleepTimerInterval = null;
 let remainingSeconds = 0;
-
-// Visualizer Canvas State
 let animFrameId = null;
 
-// KATALOG KATEGORI KHUSUS AUDIO MURNI
 const CATALOG_SECTIONS = [
     { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Billboard Top Hits official audio' },
     { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia official audio' },
@@ -34,7 +29,6 @@ const CATALOG_SECTIONS = [
     { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Pop Indonesia Nostalgia official audio' }
 ];
 
-// 1. Inisialisasi YouTube IFrame API Resmi
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('ytPlayer', {
         height: '0', 
@@ -50,7 +44,7 @@ function onYouTubeIframeAPIReady() {
         },
         events: { 
             'onReady': () => {
-                console.log("YouTube Engine Ready & Auto Loading Catalog!");
+                console.log("YouTube Engine Ready!");
                 initYouTubeMusicCatalog();
                 renderFavorites();
                 renderHistory();
@@ -62,7 +56,6 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
-// 2. Pantau Status Pemutar & Deteksi Iklan Otomatis
 function onPlayerStateChange(event) {
     const playBtn = document.getElementById('playBtn');
     
@@ -70,10 +63,7 @@ function onPlayerStateChange(event) {
         isPlaying = true;
         if(playBtn) playBtn.innerText = "⏸";
         startFakeVisualizer();
-
-        // Mulai aktifkan pemantau iklan di latar belakang
         startAdGuard();
-
     } else if (event.data === YT.PlayerState.PAUSED) {
         isPlaying = false;
         if(playBtn) playBtn.innerText = "▶";
@@ -88,63 +78,43 @@ function onPlayerStateChange(event) {
     }
 }
 
-// FUNGSI UTAMA: Mendeteksi Iklan Berjalan & Auto-Mute Suara
 function startAdGuard() {
-    stopAdGuard(); // Bersihkan interval sebelumnya jika ada
+    stopAdGuard();
     adCheckInterval = setInterval(() => {
         if (player && typeof player.isMuted === 'function') {
-            // YouTube IFrame API menyediakan fungsi internal untuk mendeteksi apakah iklan sedang tayang
             const isAdPlaying = document.querySelector('.ad-showing') !== null || 
                                 (player.getVideoData && player.getVideoData().title === "");
-            
-            // Alternatif deteksi: Jika player memutar elemen iklan, mute suaranya secara instan
             if (isAdPlaying) {
-                if (!player.isMuted()) {
-                    player.mute();
-                    console.log("Iklan terdeteksi: Audio diredam (Muted) otomatis.");
-                }
+                if (!player.isMuted()) player.mute();
             } else {
-                // Jika lagu asli sudah mulai, pastikan suara dikembalikan normal
                 if (player.isMuted()) {
                     player.unMute();
-                    // Sesuaikan kembali dengan volume slider utama user
                     const volInput = document.getElementById('mainVolume');
-                    if (volInput && player.setVolume) {
-                        player.setVolume(volInput.value * 100);
-                    }
-                    console.log("Lagu utama dimulai: Suara dikembalikan normal.");
+                    if (volInput && player.setVolume) player.setVolume(volInput.value * 100);
                 }
             }
         }
-    }, 300); // Mengecek setiap 0.3 detik
+    }, 300);
 }
 
 function stopAdGuard() {
-    if (adCheckInterval) {
-        clearInterval(adCheckInterval);
-        adCheckInterval = null;
-    }
+    if (adCheckInterval) { clearInterval(adCheckInterval); adCheckInterval = null; }
 }
 
 function onPlayerError(event) {
     console.warn("YouTube Player Error Code:", event.data);
     if (event.data === 101 || event.data === 150 || event.data === 100) {
-        alert("Lagu ini memiliki batasan pemutaran eksternal. Melewati ke lagu berikutnya...");
+        alert("Lagu dibatasi. Melewati ke lagu berikutnya...");
         playNextInQueue();
     }
 }
 
-// 3. Fungsi Putar Lagu Instan & Tepat Sasaran
 function playTrack(track) {
     if (!player || typeof player.loadVideoById !== 'function') {
         alert("Player sedang disiapkan, silakan klik sekali lagi.");
         return;
     }
-
-    if (!track || !track.id) {
-        alert("Data lagu tidak valid!");
-        return;
-    }
+    if (!track || !track.id) return;
 
     currentTrackData = track;
 
@@ -152,16 +122,12 @@ function playTrack(track) {
     document.getElementById('playerArtist').innerText = track.artist;
     document.getElementById('playerCover').src = track.coverUrl;
 
-    player.loadVideoById({
-        videoId: track.id,
-        suggestedQuality: 'medium'
-    });
+    player.loadVideoById({ videoId: track.id, suggestedQuality: 'medium' });
 
     addToHistory(track);
     updateMediaSession(track.title, track.artist, track.coverUrl);
 }
 
-// 4. Fetch Katalog Secara Paralel
 async function initYouTubeMusicCatalog() {
     const catalogContainer = document.getElementById('ytMusicCatalog');
     if (!catalogContainer) return;
@@ -180,10 +146,17 @@ async function initYouTubeMusicCatalog() {
     });
 
     await Promise.all(
-        CATALOG_SECTIONS.map(section => 
-            fetchYouTubeCatalog(section.query, `carousel-${section.id}`)
-        )
+        CATALOG_SECTIONS.map(section => fetchYouTubeCatalog(section.query, `carousel-${section.id}`))
     );
+}
+
+// Fungsi Pembersih Judul agar Bersih (Hanya Judul & Artist Utama)
+function cleanSongTitle(rawTitle) {
+    let cleaned = rawTitle
+        .replace(/【.*?】|\[.*?\]|\(Official.*?\)|\(Audio.*?\)|Official Audio|Official Video|Music Video|Lyrics|Lirik/gi, '')
+        .replace(/[-–|].*?(Official|Topic|VEVO)/gi, '')
+        .trim();
+    return cleaned || rawTitle;
 }
 
 async function fetchYouTubeCatalog(query, carouselId) {
@@ -199,16 +172,16 @@ async function fetchYouTubeCatalog(query, carouselId) {
         if (data.items && data.items.length > 0) {
             const filteredItems = data.items.filter(item => {
                 const titleLower = item.snippet.title.toLowerCase();
-                const unwantedKeywords = ['lyrics', 'lirik', 'karaoke', 'parody', 'parodi', 'live', 'concert', 'konser', 'full album', 'kumpulan', 'mix', 'playlist', 'dj remix', 'nonstop', 'medley', 'cover'];
-                return !unwantedKeywords.some(keyword => titleLower.includes(keyword));
+                const unwanted = ['lyrics', 'lirik', 'karaoke', 'parody', 'live', 'concert', 'full album', 'kumpulan', 'mix', 'playlist', 'dj remix', 'nonstop', 'cover'];
+                return !unwanted.some(word => titleLower.includes(word));
             });
 
             const sourceList = filteredItems.length >= 3 ? filteredItems : data.items;
 
             const songsToRender = sourceList.slice(0, 10).map(item => ({
                 id: item.id.videoId,
-                title: item.snippet.title,
-                artist: item.snippet.channelTitle,
+                title: cleanSongTitle(item.snippet.title),
+                artist: item.snippet.channelTitle.replace(/VEVO|Official|Topic/gi, '').trim(),
                 coverUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url
             }));
 
@@ -270,7 +243,6 @@ function renderCardsToCarousel(songs, carouselEl) {
     });
 }
 
-// 5. Pencarian Musik
 async function searchMusic() {
     const queryInput = document.getElementById('searchInput');
     if (!queryInput) return;
@@ -283,7 +255,7 @@ async function searchMusic() {
     catalogContainer.innerHTML = `
         <div class="catalog-shelf">
             <div class="shelf-carousel" id="carousel-search">
-                <p class="empty-state">Mencari audio di YouTube Music...</p>
+                <p class="empty-state">Mencari audio...</p>
             </div>
         </div>
     `;
@@ -291,24 +263,19 @@ async function searchMusic() {
     fetchYouTubeCatalog(query + " official audio", "carousel-search");
 }
 
-// 6. Player Controls
 function togglePlay() {
     if (!player || !currentTrackData) {
         alert("Pilih track musik terlebih dahulu!");
         return;
     }
-    if (isPlaying) {
-        player.pauseVideo();
-    } else {
-        player.playVideo();
-    }
+    if (isPlaying) player.pauseVideo();
+    else player.playVideo();
 }
 
 function adjustMainVolume() {
     const volInput = document.getElementById('mainVolume');
     if (!volInput) return;
-    const vol = volInput.value * 100;
-    if (player && player.setVolume) player.setVolume(vol);
+    if (player && player.setVolume) player.setVolume(volInput.value * 100);
 }
 
 function updateMediaSession(title, artist, coverUrl) {
@@ -324,7 +291,6 @@ function updateMediaSession(title, artist, coverUrl) {
     }
 }
 
-// 7. Antrean, Riwayat, & Favorit
 function addToQueue(track) { 
     queueTracks.push(track); 
     renderQueue(); 
@@ -461,7 +427,6 @@ function renderFavorites() {
     });
 }
 
-// 8. Visualizer & Lyrics
 async function toggleLyricsModal() {
     const modal = document.getElementById('lyricsModal');
     modal.classList.toggle('active');
@@ -509,7 +474,6 @@ function stopFakeVisualizer() {
     if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// 9. Sleep Timer & Ambience
 function setSleepTimer(minutes) {
     cancelSleepTimer();
     remainingSeconds = minutes * 60;
@@ -555,10 +519,14 @@ function stopAllAudio() {
 }
 
 function updateAmbience() {
-    const rainVolEl = document.php || document.getElementById('rainVol'); // Fallback aman
-    const rainVol = document.getElementById('rainVol').value;
-    const cafeVol = document.getElementById('cafeVol').value;
-    const fireVol = document.getElementById('fireVol').value;
+    const rainVolEl = document.getElementById('rainVol');
+    const cafeVolEl = document.getElementById('cafeVol');
+    const fireVolEl = document.getElementById('fireVol');
+    if(!rainVolEl || !cafeVolEl || !fireVolEl) return;
+
+    const rainVol = rainVolEl.value;
+    const cafeVol = cafeVolEl.value;
+    const fireVol = fireVolEl.value;
 
     document.getElementById('rainVal').innerText = Math.round(rainVol * 100) + '%';
     document.getElementById('cafeVal').innerText = Math.round(cafeVol * 100) + '%';

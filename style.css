@@ -270,7 +270,7 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 .yt-music-catalog {
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 20px;
     margin-top: 12px;
 }
 
@@ -294,7 +294,7 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
     display: flex;
     gap: 12px;
     overflow-x: auto;
-    padding-bottom: 8px;
+    padding-bottom: 10px;
     scroll-behavior: smooth;
     scrollbar-width: thin;
     scrollbar-color: var(--cyan-neon) transparent;
@@ -304,10 +304,10 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 .shelf-carousel::-webkit-scrollbar { height: 4px; }
 .shelf-carousel::-webkit-scrollbar-thumb { background: var(--cyan-neon); border-radius: 4px; }
 
-/* Track Card */
+/* Track Card Responsive */
 .yt-music-card {
-    min-width: 136px;
-    max-width: 136px;
+    min-width: 140px;
+    max-width: 140px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--card-border);
     border-radius: 14px;
@@ -330,9 +330,10 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 .card-thumb-wrapper {
     position: relative;
     width: 100%;
-    height: 115px;
+    height: 120px;
     border-radius: 10px;
     overflow: hidden;
+    background: #111;
 }
 
 .card-thumb-wrapper img {
@@ -364,15 +365,23 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
     transform: translate(-50%, -50%) scale(1);
 }
 
-.yt-card-meta { display: flex; flex-direction: column; }
+.yt-card-meta { 
+    display: flex; 
+    flex-direction: column; 
+    gap: 2px;
+}
 
 .yt-card-title {
     font-size: 11px;
     font-weight: 700;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text-primary);
+    line-height: 1.3;
+    height: 28px;
 }
 
 .yt-card-artist {
@@ -582,7 +591,7 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
     text-align: center;
 }
 
-/* SMART FLOATING PLAYER (OPTIMIZED FOR MOBILE & DESKTOP) */
+/* SMART FLOATING PLAYER */
 .smart-floating-player {
     position: fixed;
     bottom: 12px;
@@ -638,17 +647,33 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 .player-volume { display: flex; align-items: center; gap: 6px; }
 .player-volume input { width: 60px; cursor: pointer; }
 
-/* RESPONSIVE MEDIA QUERIES FOR MOBILE */
+/* RESPONSIVE MEDIA QUERIES FOR MOBILE HP */
 @media screen and (max-width: 768px) {
     .app-container { padding: 10px; gap: 12px; }
     .smart-header { flex-direction: column; align-items: stretch; padding: 12px; gap: 10px; }
-    .search-capsule { max-width: 100%; }
+    .search-capsule { max-width: 100%; width: 100%; }
     .bento-grid { grid-template-columns: 1fr; gap: 12px; }
     .favorites-feed, .song-feed { grid-column: span 1; }
+    
+    /* Perkecil dan sesuaikan kartu katalog agar rapi dan tidak melebar di HP */
+    .yt-music-card {
+        min-width: 125px;
+        max-width: 125px;
+        padding: 8px;
+    }
+    .card-thumb-wrapper {
+        height: 105px;
+    }
+    .yt-card-title {
+        font-size: 10px;
+        height: 26px;
+    }
+    .yt-card-artist {
+        font-size: 8.5px;
+    }
+
     .player-volume { display: none; }
     .footer-container { grid-template-columns: 1fr; gap: 14px; }
     .smart-footer { margin-bottom: 95px; padding: 16px; }
     .smart-floating-player { width: 96%; padding: 6px 12px; bottom: 8px; border-radius: 18px; }
-    .yt-music-card { min-width: 124px; max-width: 124px; }
-    .card-thumb-wrapper { height: 105px; }
 }
