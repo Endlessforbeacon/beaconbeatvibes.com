@@ -1,5 +1,5 @@
 // ==========================================
-// BEACON BEATVIBES - CLEAN AUDIO & MOBILE RESPONSIVE ENGINE
+// BEACON BEATVIBES - SPOTIFY UI & AUDIO ENGINE
 // ==========================================
 
 const YOUTUBE_API_KEY = "AIzaSyC6wP1LBnMYVa975zKwGObtVtMetoY7xb4";
@@ -9,15 +9,18 @@ let isPlaying = false;
 let currentTrackData = null;
 let adCheckInterval = null;
 
+// State Data Storage
 let favoriteTracks = JSON.parse(localStorage.getItem('beacon_fav_tracks')) || [];
 let historyTracks = JSON.parse(localStorage.getItem('beacon_history_tracks')) || [];
 let queueTracks = [];
 
+// Sleep Timer & Visualizer State
 let sleepTimerTimeout = null;
 let sleepTimerInterval = null;
 let remainingSeconds = 0;
 let animFrameId = null;
 
+// KATALOG KATEGORI KHUSUS AUDIO MURNI
 const CATALOG_SECTIONS = [
     { id: 'global_top', title: '🌐 Global Billboard Top Hits', query: 'Billboard Top Hits official audio' },
     { id: 'indo_top', title: '🇮🇩 Top Hits Indonesia Pop', query: 'Lagu Pop Indonesia official audio' },
@@ -29,6 +32,7 @@ const CATALOG_SECTIONS = [
     { id: 'throwback_indo', title: '📜 Nostalgia Indonesia 2000an', query: 'Lagu Pop Indonesia Nostalgia official audio' }
 ];
 
+// 1. Inisialisasi YouTube Player Resmi
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('ytPlayer', {
         height: '0', 
@@ -56,6 +60,7 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
+// 2. Event Handler State Player
 function onPlayerStateChange(event) {
     const playBtn = document.getElementById('playBtn');
     
@@ -78,6 +83,7 @@ function onPlayerStateChange(event) {
     }
 }
 
+// 3. System Auto-Mute Suara Iklan
 function startAdGuard() {
     stopAdGuard();
     adCheckInterval = setInterval(() => {
@@ -109,6 +115,7 @@ function onPlayerError(event) {
     }
 }
 
+// 4. Memutar Track Musik
 function playTrack(track) {
     if (!player || typeof player.loadVideoById !== 'function') {
         alert("Player sedang disiapkan, silakan klik sekali lagi.");
@@ -128,6 +135,7 @@ function playTrack(track) {
     updateMediaSession(track.title, track.artist, track.coverUrl);
 }
 
+// 5. Inisialisasi Katalog
 async function initYouTubeMusicCatalog() {
     const catalogContainer = document.getElementById('ytMusicCatalog');
     if (!catalogContainer) return;
@@ -150,13 +158,29 @@ async function initYouTubeMusicCatalog() {
     );
 }
 
-// Fungsi Pembersih Judul agar Bersih (Hanya Judul & Artist Utama)
-function cleanSongTitle(rawTitle) {
-    let cleaned = rawTitle
+// Parsing Judul & Artis ala Spotify
+function parseTitleAndArtist(rawTitle, rawArtist) {
+    let clean = rawTitle
         .replace(/【.*?】|\[.*?\]|\(Official.*?\)|\(Audio.*?\)|Official Audio|Official Video|Music Video|Lyrics|Lirik/gi, '')
-        .replace(/[-–|].*?(Official|Topic|VEVO)/gi, '')
         .trim();
-    return cleaned || rawTitle;
+
+    let songTitle = clean;
+    let artistName = rawArtist.replace(/VEVO|Official|Topic/gi, '').trim();
+
+    if (clean.includes('-')) {
+        const parts = clean.split('-');
+        artistName = parts[0].trim();
+        songTitle = parts.slice(1).join('-').trim();
+    } else if (clean.includes('–')) {
+        const parts = clean.split('–');
+        artistName = parts[0].trim();
+        songTitle = parts.slice(1).join('–').trim();
+    }
+
+    return {
+        title: songTitle || clean,
+        artist: artistName || "Artist"
+    };
 }
 
 async function fetchYouTubeCatalog(query, carouselId) {
@@ -180,8 +204,8 @@ async function fetchYouTubeCatalog(query, carouselId) {
 
             const songsToRender = sourceList.slice(0, 10).map(item => ({
                 id: item.id.videoId,
-                title: cleanSongTitle(item.snippet.title),
-                artist: item.snippet.channelTitle.replace(/VEVO|Official|Topic/gi, '').trim(),
+                rawTitle: item.snippet.title,
+                rawArtist: item.snippet.channelTitle,
                 coverUrl: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url
             }));
 
@@ -198,22 +222,26 @@ function renderCardsToCarousel(songs, carouselEl) {
     carouselEl.innerHTML = '';
 
     songs.forEach(trackData => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = trackData.title;
-        trackData.title = tempDiv.textContent || tempDiv.innerText || "";
+        const parsedMeta = parseTitleAndArtist(trackData.rawTitle, trackData.rawArtist);
+        const track = {
+            id: trackData.id,
+            title: parsedMeta.title,
+            artist: parsedMeta.artist,
+            coverUrl: trackData.coverUrl
+        };
 
-        const isLiked = favoriteTracks.some(t => t.id === trackData.id);
+        const isLiked = favoriteTracks.some(t => t.id === track.id);
 
         const card = document.createElement('div');
         card.className = 'yt-music-card';
         card.innerHTML = `
             <div class="card-thumb-wrapper">
-                <img src="${trackData.coverUrl}" alt="cover" loading="lazy" onerror="this.src='https://via.placeholder.com/120/1a1a24/ffffff?text=BEACON'">
+                <img src="${track.coverUrl}" alt="${track.title}" loading="lazy" onerror="this.src='https://via.placeholder.com/150/121212/ffffff?text=BEACON'">
                 <div class="play-hover-btn">▶</div>
             </div>
             <div class="yt-card-meta">
-                <div class="yt-card-title">${trackData.title}</div>
-                <div class="yt-card-artist">${trackData.artist}</div>
+                <div class="yt-card-title" title="${track.title}">${track.title}</div>
+                <div class="yt-card-artist" title="${track.artist}">${track.artist}</div>
             </div>
             <div class="card-quick-actions">
                 <button class="action-btn queue-add-btn" title="Tambah ke Antrean">➕</button>
@@ -223,26 +251,27 @@ function renderCardsToCarousel(songs, carouselEl) {
 
         card.onclick = (e) => {
             if (e.target.closest('.card-quick-actions')) return;
-            playTrack(trackData);
+            playTrack(track);
         };
 
         card.querySelector('.queue-add-btn').onclick = (e) => {
             e.stopPropagation();
-            addToQueue(trackData);
+            addToQueue(track);
         };
 
         const likeBtn = card.querySelector('.like-btn');
         likeBtn.onclick = (e) => {
             e.stopPropagation();
-            toggleLikeTrack(trackData);
-            likeBtn.classList.toggle('liked', favoriteTracks.some(t => t.id === trackData.id));
-            likeBtn.innerText = favoriteTracks.some(t => t.id === trackData.id) ? '❤️' : '🤍';
+            toggleLikeTrack(track);
+            likeBtn.classList.toggle('liked', favoriteTracks.some(t => t.id === track.id));
+            likeBtn.innerText = favoriteTracks.some(t => t.id === track.id) ? '❤️' : '🤍';
         };
 
         carouselEl.appendChild(card);
     });
 }
 
+// 6. Pencarian Musik
 async function searchMusic() {
     const queryInput = document.getElementById('searchInput');
     if (!queryInput) return;
@@ -263,6 +292,7 @@ async function searchMusic() {
     fetchYouTubeCatalog(query + " official audio", "carousel-search");
 }
 
+// 7. Player Controls
 function togglePlay() {
     if (!player || !currentTrackData) {
         alert("Pilih track musik terlebih dahulu!");
@@ -291,6 +321,7 @@ function updateMediaSession(title, artist, coverUrl) {
     }
 }
 
+// 8. Antrean, Riwayat, & Favorit
 function addToQueue(track) { 
     queueTracks.push(track); 
     renderQueue(); 
@@ -427,6 +458,7 @@ function renderFavorites() {
     });
 }
 
+// 9. Visualizer & Lirik
 async function toggleLyricsModal() {
     const modal = document.getElementById('lyricsModal');
     modal.classList.toggle('active');
@@ -474,6 +506,7 @@ function stopFakeVisualizer() {
     if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
 
+// 10. Sleep Timer & Ambience
 function setSleepTimer(minutes) {
     cancelSleepTimer();
     remainingSeconds = minutes * 60;

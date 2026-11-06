@@ -261,7 +261,10 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
     white-space: nowrap;
 }
 
-/* CAROUSEL CATALOG STYLES */
+/* ==========================================
+   SPOTIFY STYLE MUSIC CATALOG & CAROUSEL
+   ========================================== */
+
 .section-subtext {
     font-size: 11px;
     color: var(--text-secondary);
@@ -270,18 +273,18 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 .yt-music-catalog {
     display: flex;
     flex-direction: column;
-    gap: 20px;
-    margin-top: 12px;
+    gap: 28px;
+    margin-top: 16px;
 }
 
 .catalog-shelf {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .shelf-title {
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 800;
     font-family: var(--font-cyber);
     color: var(--cyan-neon);
@@ -292,77 +295,88 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 
 .shelf-carousel {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     overflow-x: auto;
-    padding-bottom: 10px;
+    padding: 4px 4px 12px 4px;
     scroll-behavior: smooth;
     scrollbar-width: thin;
     scrollbar-color: var(--cyan-neon) transparent;
     -webkit-overflow-scrolling: touch;
 }
 
-.shelf-carousel::-webkit-scrollbar { height: 4px; }
-.shelf-carousel::-webkit-scrollbar-thumb { background: var(--cyan-neon); border-radius: 4px; }
+.shelf-carousel::-webkit-scrollbar { height: 6px; }
+.shelf-carousel::-webkit-scrollbar-thumb { background: rgba(0, 243, 255, 0.3); border-radius: 4px; }
+.shelf-carousel::-webkit-scrollbar-thumb:hover { background: var(--cyan-neon); }
 
-/* Track Card Responsive */
+/* Spotify Card Style */
 .yt-music-card {
-    min-width: 140px;
-    max-width: 140px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--card-border);
+    min-width: 155px;
+    max-width: 155px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 14px;
-    padding: 10px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
     position: relative;
     flex-shrink: 0;
 }
 
 .yt-music-card:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.1);
     border-color: var(--cyan-neon);
-    transform: translateY(-3px);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
 }
 
+/* Artwork 1:1 Square Ratio Ala Spotify */
 .card-thumb-wrapper {
     position: relative;
     width: 100%;
-    height: 120px;
+    aspect-ratio: 1 / 1;
     border-radius: 10px;
     overflow: hidden;
     background: #111;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .card-thumb-wrapper img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
 }
 
+.yt-music-card:hover .card-thumb-wrapper img {
+    transform: scale(1.05);
+}
+
+/* Floating Play Button Ala Spotify */
 .play-hover-btn {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0.8);
-    width: 34px;
-    height: 34px;
-    background: rgba(0, 243, 255, 0.9);
+    bottom: 8px;
+    right: 8px;
+    width: 40px;
+    height: 40px;
+    background: var(--cyan-neon);
     color: #000;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 15px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
     opacity: 0;
-    transition: all 0.2s ease;
+    transform: translateY(8px);
+    transition: all 0.25s ease;
 }
 
 .yt-music-card:hover .play-hover-btn {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translateY(0);
 }
 
 .yt-card-meta { 
@@ -372,21 +386,19 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 }
 
 .yt-card-title {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    color: #ffffff;
+    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text-primary);
-    line-height: 1.3;
-    height: 28px;
+    line-height: 1.2;
 }
 
 .yt-card-artist {
-    font-size: 9px;
-    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 500;
+    color: #a7a7a7;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -396,7 +408,9 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 2px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-top: 6px;
 }
 
 .loading-catalog {
@@ -647,7 +661,7 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
 .player-volume { display: flex; align-items: center; gap: 6px; }
 .player-volume input { width: 60px; cursor: pointer; }
 
-/* RESPONSIVE MEDIA QUERIES FOR MOBILE HP */
+/* RESPONSIVE MEDIA QUERIES FOR MOBILE (HP) */
 @media screen and (max-width: 768px) {
     .app-container { padding: 10px; gap: 12px; }
     .smart-header { flex-direction: column; align-items: stretch; padding: 12px; gap: 10px; }
@@ -655,21 +669,28 @@ input[type="range"] { accent-color: var(--cyan-neon); width: 100%; cursor: point
     .bento-grid { grid-template-columns: 1fr; gap: 12px; }
     .favorites-feed, .song-feed { grid-column: span 1; }
     
-    /* Perkecil dan sesuaikan kartu katalog agar rapi dan tidak melebar di HP */
+    .yt-music-catalog { gap: 20px; }
+    
+    /* Perkecil dan sesuaikan kartu katalog di HP agar muat pas dan tidak meluber */
     .yt-music-card {
-        min-width: 125px;
-        max-width: 125px;
-        padding: 8px;
+        min-width: 130px;
+        max-width: 130px;
+        padding: 9px;
+        border-radius: 10px;
     }
-    .card-thumb-wrapper {
-        height: 105px;
-    }
-    .yt-card-title {
-        font-size: 10px;
-        height: 26px;
-    }
-    .yt-card-artist {
-        font-size: 8.5px;
+    
+    .yt-card-title { font-size: 11px; }
+    .yt-card-artist { font-size: 9.5px; }
+
+    /* Tombol play tampil otomatis secara halus di HP */
+    .play-hover-btn {
+        opacity: 0.9;
+        transform: translateY(0);
+        width: 34px;
+        height: 34px;
+        font-size: 13px;
+        bottom: 6px;
+        right: 6px;
     }
 
     .player-volume { display: none; }
